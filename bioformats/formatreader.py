@@ -913,6 +913,7 @@ def get_image_reader(key, path=None, url=None):
           that key open at a time.
     '''
     if key in __image_reader_key_cache:
+        logger.info("Key in image reader cache")
         old_path, old_url = __image_reader_key_cache[key]
         old_count, rdr = __image_reader_cache[old_path, old_url]
         if old_path == path and old_url == url:
@@ -943,7 +944,9 @@ def release_image_reader(key):
 
 def clear_image_reader_cache():
     '''Get rid of any open image readers'''
+    logger.info("Readers in cache %s" % __image_reader_cache)
     for use_count, rdr in __image_reader_cache.values():
+        logger.info("Closing reader %s" % rdr)
         rdr.close()
     __image_reader_cache.clear()
     __image_reader_key_cache.clear()
