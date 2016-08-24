@@ -924,8 +924,9 @@ def get_image_reader(key, path=None, url=None):
     else:
         rdr = ImageReader(path=path, url=url)
         old_count = 0
-    __image_reader_cache[path, url] = (old_count+1, rdr)
-    __image_reader_key_cache[key] = (path, url)
+    logger.info("Not caching reader")
+    # __image_reader_cache[path, url] = (old_count+1, rdr)
+    # __image_reader_key_cache[key] = (path, url)
     return rdr
 
 def release_image_reader(key):
