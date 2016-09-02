@@ -34,6 +34,9 @@ class OmeroImageReader(object):
 
     def __init__(self, url, host, session_id):
         '''
+        Initalise the reader by passing url in 'omero::idd=image_id' format.
+        host = omero server address.
+        session_id = session to join.
         '''
         self.url = url
         self.host = host
@@ -42,6 +45,7 @@ class OmeroImageReader(object):
         self.image = None
         self.metadata = None
         self.extract_id = re.compile(self.REGEX_INDEX_FROM_FILE_NAME)
+        self.path = url  # This guy is needed for reader caching
 
     def __enter__(self):
         '''
@@ -55,12 +59,22 @@ class OmeroImageReader(object):
 
     def close(self):
         '''
+        Close connection to the server.
+        Important step. Closes all the services on the server freeing up
+        the resources.
         '''
         if self.gateway is not None:
             self.gateway.seppuku(softclose=True)
 
     def init_reader(self):
         '''
+        Connect to OMERO server by joining session id.
+        Request the OMERO.image from the server.
+        Regex converts "omero::iid=image_id" to image_id.
+
+        After reader is initaillised images can be read from the server.
+
+        Connection to the server is terminated on close call.
         '''
         self.gateway = BlitzGateway(host=self.host)
         connected = False
@@ -86,6 +100,20 @@ class OmeroImageReader(object):
              rescale=True, wants_max_intensity=False, channel_names=None,
              XYWH=None):
         '''
+        Read a single plane from the image reader file.
+        :param c: read from this channel. `None` = read color image if
+            multichannel or interleaved RGB.
+        :param z: z-stack index
+        :param t: time index
+        :param series: series for ``.flex`` and similar multi-stack formats
+        :param index: if `None`, fall back to ``zct``, otherwise load the
+            indexed frame
+        :param rescale: `True` to rescale the intensity scale to 0 and 1;
+            `False` to return the raw values native to the file.
+        :param wants_max_intensity: if `False`, only return the image;
+            if `True`, return a tuple of image and max intensity
+        :param channel_names: provide the channel names for the OME metadata
+        :param XYWH: a (x, y, w, h) tuple
         '''
         if c is None and index is not None:
             c = index
@@ -112,15 +140,35 @@ class OmeroImageReader(object):
             logger.error(message)
         if message is not None:
             raise Exception("Couldn't retrieve a plane from OMERO image.")
+        tile = None
+        if XYWH is not None:
+            assert isinstance(XYWH, tuple) and len(XYWH) == 4, \
+                "Invalid XYWH tuple"
+            tile = XYWH
         pixels = self.image.getPrimaryPixels()
         image = None
         if c is None:
-            planes = []
-            for channel in range(self.image.getSizeC()):
-                planes.append(pixels.getPlane(z, channel, t))
+            if tile is None:
+                coordinates = [
+                    (z, channel, t) for channel in
+                    range(self.image.getSizeC())]
+                planes = pixels.getPlanes(coordinates)
+            else:
+                coordinates = [
+                    (z, channel, t, tile) for channel in
+                    range(self.image.getSizeC())]
+                planes = pixels.getTiles(coordinates)
             image = np.dstack(planes)
         else:
-            image = pixels.getPlane(z, c, t)
+            if tile is None:
+                image = pixels.getPlane(z, c, t)
+            else:
+                image = pixels.getTile(z, c, t, tile)
+        scale = self.image.getPixelRange()[1]
+        logger.debug("Maximum pixel value %s" % scale)
+        if rescale:
+            logger.debug("Rescaling image by %s" % scale)
+            image = image.astype(np.float32) / float(scale)
         if wants_max_intensity:
-            return image, 1
+            return image, scale
         return image
