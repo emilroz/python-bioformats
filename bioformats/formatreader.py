@@ -50,6 +50,22 @@ import bioformats
 from . import metadatatools as metadatatools
 import javabridge as javabridge
 
+OMERO_IMPORTED = False
+try:
+    import omero
+    from omero.gateway import BlitzGateway
+    from omero.rtypes import rstring, rlist, rlong
+    import omero.scripts as scripts
+    from omero.util.temp_files import manager
+    from . import omeroreader as omero_reader
+    OMERO_IMPORTED = True
+except:
+    OMERO_IMPORTED = False
+    logger.warn("OMEROpy not on the path.")
+if OMERO_IMPORTED:
+    logger.info("Found OMEROpy")
+
+
 K_OMERO_SERVER = "omero_server"
 K_OMERO_PORT = "omero_port"
 K_OMERO_USER = "omero_user"
@@ -922,7 +938,13 @@ def get_image_reader(key, path=None, url=None):
     if (path, url) in __image_reader_cache:
         old_count, rdr = __image_reader_cache[path, url]
     else:
-        rdr = ImageReader(path=path, url=url)
+        if OMERO_IMPORTED and url is not None and url.lower().startswith("omero:"):
+            logger.info("Initializing Python reader.")
+            rdr = omero_reader.OmeroImageReader(
+                url, __omero_server, __omero_session_id)
+        else:
+            logger.info("Falling back to Java reader.")
+            rdr = ImageReader(path=path, url=url)
         old_count = 0
     __image_reader_cache[path, url] = (old_count+1, rdr)
     __image_reader_key_cache[key] = (path, url)
