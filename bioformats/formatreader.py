@@ -30,6 +30,7 @@ import logging
 logger = logging.getLogger(__name__)
 import errno
 import numpy as np
+import pprint
 import os
 import sys
 
@@ -524,6 +525,7 @@ def get_omero_reader():
     rdr.setSessionID(sessionID);
     rdr;
     """
+    log.info("Asking for OMERO reader.")
     if __omero_session_id is None:
         omero_login()
 
@@ -564,6 +566,7 @@ class ImageReader(object):
     '''
 
     def __init__(self, path=None, url=None, perform_init=True):
+        log.info("INITIALIZING STANDARD READER")
         self.stream = None
         file_scheme = "file:"
         self.using_temp_file = False
@@ -928,6 +931,7 @@ def get_image_reader(key, path=None, url=None):
     key - use this key to keep only a single cache member associated with
           that key open at a time.
     '''
+    logger.debug("Getting image reader for: %s, %s, %s" % (key, path, url))
     if key in __image_reader_key_cache:
         logger.info("Key in image reader cache")
         old_path, old_url = __image_reader_key_cache[key]
@@ -936,8 +940,10 @@ def get_image_reader(key, path=None, url=None):
             return rdr
         release_image_reader(key)
     if (path, url) in __image_reader_cache:
+        logger.info("Path/Url in cache %s, %s" % (path, url))
         old_count, rdr = __image_reader_cache[path, url]
     else:
+        logger.info("No cached reader found %s, %s" % (path, url))
         if OMERO_IMPORTED and url is not None and url.lower().startswith("omero:"):
             logger.info("Initializing Python reader.")
             rdr = omero_reader.OmeroImageReader(
@@ -959,6 +965,11 @@ def release_image_reader(key):
         del __image_reader_key_cache[key]
         old_count, rdr = __image_reader_cache[path, url]
         if old_count == 1:
+            try:
+                logger.debug("Closing reader: %s" %
+                     pprint.pformat(rdr.session.activeServices()))
+            except:
+                pass
             rdr.close()
             del __image_reader_cache[path, url]
         else:
@@ -969,6 +980,11 @@ def clear_image_reader_cache():
     logger.info("Readers in cache %s" % __image_reader_cache)
     for use_count, rdr in __image_reader_cache.values():
         logger.info("Closing reader %s" % rdr)
+        try:
+            logger.debug("Closing reader: %s" %
+                     pprint.pformat(rdr.session.activeServices()))
+        except:
+            pass
         rdr.close()
     __image_reader_cache.clear()
     __image_reader_key_cache.clear()
