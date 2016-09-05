@@ -42,7 +42,8 @@ class OmeroImageReader(object):
         self.host = host
         self.session_id = session_id
         self.gateway = None
-        self.image = None
+        self.omero_image = None
+        self.pixels = None
         self.metadata = None
         self.extract_id = re.compile(self.REGEX_INDEX_FROM_FILE_NAME)
         self.path = url  # This guy is needed for reader caching
@@ -76,6 +77,9 @@ class OmeroImageReader(object):
 
         Connection to the server is terminated on close call.
         '''
+        logger.debug("Initializing OmeroPyReader")
+        if self.gateway is not None:
+            return
         self.gateway = BlitzGateway(host=self.host)
         connected = False
         try:
@@ -90,11 +94,12 @@ class OmeroImageReader(object):
             raise Exception(message)
         image_id = int(self.extract_id.sub('', self.url))
         try:
-            self.image = self.gateway.getObject("Image", image_id)
+            self.omero_image = self.gateway.getObject("Image", image_id)
         except:
             message = "Image Id: %s not found on the server." % image_id
             logger.error(message)
             raise Exception(message)
+        self.pixels = self.omero_image.getPrimaryPixels()
 
     def read(self, c=None, z=0, t=0, series=None, index=None,
              rescale=True, wants_max_intensity=False, channel_names=None,
@@ -126,17 +131,17 @@ class OmeroImageReader(object):
         if self.gateway is None:
             self.init_reader()
         message = None
-        if t >= self.image.getSizeT():
+        if t >= self.omero_image.getSizeT():
             message = "T index %s exceeds sizeT %s" % \
-                      (t, self.image.getSizeT())
+                      (t, self.omero_image.getSizeT())
             logger.error(message)
-        if c >= self.image.getSizeC():
+        if c >= self.omero_image.getSizeC():
             message = "C index %s exceeds sizeC %s" % \
-                      (c, self.image.getSizeC())
+                      (c, self.omero_image.getSizeC())
             logger.error(message)
-        if z >= self.image.getSizeZ():
+        if z >= self.omero_image.getSizeZ():
             message = "Z index %s exceeds sizeZ %s" % \
-                      (z, self.image.getSizeZ())
+                      (z, self.omero_image.getSizeZ())
             logger.error(message)
         if message is not None:
             raise Exception("Couldn't retrieve a plane from OMERO image.")
@@ -145,26 +150,25 @@ class OmeroImageReader(object):
             assert isinstance(XYWH, tuple) and len(XYWH) == 4, \
                 "Invalid XYWH tuple"
             tile = XYWH
-        pixels = self.image.getPrimaryPixels()
         image = None
         if c is None:
             if tile is None:
                 coordinates = [
                     (z, channel, t) for channel in
-                    range(self.image.getSizeC())]
-                planes = pixels.getPlanes(coordinates)
+                    range(self.omero_image.getSizeC())]
+                planes = self.pixels.getPlanes(coordinates)
             else:
                 coordinates = [
                     (z, channel, t, tile) for channel in
-                    range(self.image.getSizeC())]
-                planes = pixels.getTiles(coordinates)
+                    range(self.omero_image.getSizeC())]
+                planes = self.pixels.getTiles(coordinates)
             image = np.dstack(planes)
         else:
             if tile is None:
-                image = pixels.getPlane(z, c, t)
+                image = self.pixels.getPlane(z, c, t)
             else:
-                image = pixels.getTile(z, c, t, tile)
-        scale = self.image.getPixelRange()[1]
+                image = self.pixels.getTile(z, c, t, tile)
+        scale = self.omero_image.getPixelRange()[1]
         logger.debug("Maximum pixel value %s" % scale)
         if rescale:
             logger.debug("Rescaling image by %s" % scale)
