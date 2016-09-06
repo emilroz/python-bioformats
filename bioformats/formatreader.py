@@ -60,9 +60,10 @@ try:
     from omero.util.temp_files import manager
     from . import omeroreader as omero_reader
     OMERO_IMPORTED = True
-except:
+except Exception, e:
     OMERO_IMPORTED = False
-    logger.warn("OMEROpy not on the path.")
+    exc = e
+    logger.warn("OMEROpy not on the path.", exc_info=True)
 if OMERO_IMPORTED:
     logger.info("Found OMEROpy")
 
@@ -525,7 +526,7 @@ def get_omero_reader():
     rdr.setSessionID(sessionID);
     rdr;
     """
-    log.info("Asking for OMERO reader.")
+    logger.info("Asking for OMERO reader.")
     if __omero_session_id is None:
         omero_login()
 
@@ -566,7 +567,7 @@ class ImageReader(object):
     '''
 
     def __init__(self, path=None, url=None, perform_init=True):
-        log.info("INITIALIZING STANDARD READER")
+        logger.info("INITIALIZING STANDARD READER")
         self.stream = None
         file_scheme = "file:"
         self.using_temp_file = False
