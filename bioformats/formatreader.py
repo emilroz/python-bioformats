@@ -55,7 +55,11 @@ try:
     from omero_reader import OmeroReader, OMERO_IMPORTED
     from omero_reader.utils import omero_reader_enabled
     OMERO_READER_IMPORTED = True
+    logger.debug("omero-reader imported: %s" % OMERO_READER_IMPORTED)
+    logger.debug("omero-reader enabled: %s" % omero_reader_enabled())
+    logger.debug("OMERO bindings imported: %s" % OMERO_IMPORTED)
 except ImportError:
+    logger.warning("Failed to import OMERO libs")
     pass
 
 K_OMERO_SERVER = "omero_server"
