@@ -946,6 +946,18 @@ def get_image_reader(key, path=None, url=None):
             rdr = OmeroReader(__omero_server, __omero_session_id, url=url)
         else:
             logger.debug("Falling back to Java reader.")
+            if url is not None:
+                logger.debug(
+                    "Url: %s; correct: %s" %
+                    (url, url.lower().startswith("omero:")))
+            else:
+                logger.warning("Url is None")
+            logger.warning("omero-reader imported: %s" % OMERO_READER_IMPORTED)
+            if OMERO_READER_IMPORTED:
+                logger.warning(
+                    "omero-reader enabled: %s" % omero_reader_enabled())
+                logger.warning(
+                    "OMERO bindings imported: %s" % OMERO_IMPORTED)
             rdr = ImageReader(path=path, url=url)
         old_count = 0
     __image_reader_cache[path, url] = (old_count+1, rdr)
