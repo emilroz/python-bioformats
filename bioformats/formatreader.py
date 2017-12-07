@@ -713,12 +713,12 @@ class ImageReader(object):
         try:
             self.rdr.setId(self.path)
         except jutil.JavaException as e:
+            je = e.throwable
             java_stacktrace = javabridge.run_script(
-                'com.google.common.base.Throwables.getStackTraceAsString(e)',
-                bindings_in={'e': e}
+                'com.google.common.base.Throwables.getStackTraceAsString(je)',
+                bindings_in={'je': je}
             )
             logger.warn(java_stacktrace, exc_info=True)
-            je = e.throwable
             if has_omero_packages() and jutil.is_instance_of(
                 je, "Glacier2/PermissionDeniedException"):
                 # Handle at a higher level
