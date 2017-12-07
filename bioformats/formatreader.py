@@ -713,11 +713,9 @@ class ImageReader(object):
         try:
             self.rdr.setId(self.path)
         except jutil.JavaException as e:
-            java_stacktrace = javabridge.static_call(
-                'com/google/common/base/Throwables',
-                'getStackTraceAsString',
-                '(I)Ljava/lang/String;',
-                e
+            java_stacktrace = javabridge.run_script(
+                'com.google.common.base.Throwables.getStackTraceAsString(e)',
+                bindings_in={'e': e}
             )
             logger.warn(java_stacktrace, exc_info=True)
             je = e.throwable
