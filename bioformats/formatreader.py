@@ -43,7 +43,6 @@ else:
 
 import shutil
 import tempfile
-import traceback
 
 import javabridge as jutil
 import bioformats
@@ -591,9 +590,7 @@ class ImageReader(object):
                             omero_logout()
                             omero_login()
                         else:
-                            logger.warn(e.message)
-                            for line in traceback.format_exc().split("\n"):
-                                logger.warn(line)
+                            logger.warn(e.message, exc_info=True)
                             if jutil.is_instance_of(
                                 je, "java/io/FileNotFoundException"):
                                 raise IOError(
@@ -716,9 +713,7 @@ class ImageReader(object):
         try:
             self.rdr.setId(self.path)
         except jutil.JavaException as e:
-            logger.warn(e.message)
-            for line in traceback.format_exc().split("\n"):
-                logger.warn(line)
+            logger.warn(e.message, exc_info=True)
             je = e.throwable
             if has_omero_packages() and jutil.is_instance_of(
                 je, "Glacier2/PermissionDeniedException"):
