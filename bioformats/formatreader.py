@@ -618,7 +618,7 @@ class ImageReader(object):
                 src.close()
                 dest.close()
                 urlpath = urlparse(url)[2]
-                filename = unquote(urlpath.split("/")[-1])
+                filename = os.path.basename(self.path)
         else:
             if sys.platform.startswith("win"):
                 self.path = self.path.replace("/", os.path.sep)
