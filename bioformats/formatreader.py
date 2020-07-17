@@ -32,6 +32,8 @@ import errno
 import numpy as np
 import os
 import sys
+import certifi
+
 
 if sys.version_info.major == 3:
     from urllib.request import urlopen, urlparse, url2pathname
@@ -605,7 +607,7 @@ class ImageReader(object):
                 # Other URLS, copy them to a tempfile location
                 #
                 ext = url[url.rfind("."):]
-                src = urlopen(url)
+                src = urlopen(url, cafile=certifi.where())
                 dest_fd, self.path = tempfile.mkstemp(suffix=ext)
                 try:
                     dest = os.fdopen(dest_fd, 'wb')
